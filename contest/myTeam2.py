@@ -202,6 +202,9 @@ class MultiAgentSearchAgent(CaptureAgent):
         self.debugDraw([goto], [0,1,0])
         return dmin
     
+    # Main function
+    # Used to calculate all the resulting features from an action.
+    # So far takes into account: distance to the border, distance to closest ghost, distance to closest food and distance to closest pacman
     def getFeatures(self, gameState, a):
         """
         Returns a counter of features for the state
@@ -214,6 +217,7 @@ class MultiAgentSearchAgent(CaptureAgent):
             newGameState = gameState.generateSuccessor(self.index, a)
         myOldState = gameState.getAgentState(self.index)
         myNewState = newGameState.getAgentState(self.index)
+        friendState = gameState.getAgentState((self.index+2)%4)
 
         enemies = []
         for agent in self.getOpponents(newGameState):
@@ -245,22 +249,52 @@ class MultiAgentSearchAgent(CaptureAgent):
                                          ghostPositions))
         else:
             distanceToClosestGhost=100
-    
+        
+        enemyPacmanPossiblePositions = {}
+        #Find closest enemy and best position to intercept him 
+        for agent in self.getOpponents(newGameState):
+            # Add opponents to list of enemies
+            enemy = newGameState.getAgentState(agent)
+            if(enemy.isPacman and enemy.getPosition() != None):
+                enemyPacmanPossiblePositions[agent] = map(lambda a: gameState.generateSuccessor(agent, a),gameState.getLegalActions(agent))
+        PacmanFollowing = -1;
+        distanceToEnemyPacman = 999
+        goTo = None
+        for id in enemyPacmanPossiblePositions:
+            print id
+            for enemyP in enemyPacmanPossiblePositions[id]:
+                if self.getMazeDistance(Pos, enemyP.getAgentPosition(id))<distanceToEnemyPacman:
+                    pacmanFollowing = id
+                    distanceToEnemyPacman = self.getMazeDistance(Pos, enemyP.getAgentPosition(id))
+                    goTo = enemyP.getAgentPosition(id)
+        #if(goTo!=None):
+        #    self.debugDraw([goTo], [1,0,0],True)
+        #    util.pause()
+            
+        pacmanScore = 0
         ghostScore = 0
         foodScore = 0
         captureScore = 0
+        friendScore = 0       
+        
+        if distanceToEnemyPacman == 0:
+            pacmanScore = 2
+        elif distanceToEnemyPacman < 999:
+            pacmanScore = 1/distanceToEnemyPacman
+                
+            
         if distanceToClosestGhost == 0:
-          return -99
+           ghostScore = -999
         elif distanceToClosestGhost < 6:
-          ghostScore = (1./distanceToClosestGhost) * -2
+          ghostScore = (1./distanceToClosestGhost)
         
         if(len(food.asList())==len(oldfood.asList())-1):
             foodScore = 2
         elif distanceToClosestFood == 0:
-          foodScore = 0
-          ghostScore += 2
+            foodScore = 0
+            ghostScore += 2
         else:
-          foodScore = 1./distanceToClosestFood
+            foodScore = 1./distanceToClosestFood
         if (myOldState.isPacman and myOldState.numCarrying>0):
             d = self.distanceToCamp(newGameState)
             print(str(d))
@@ -268,19 +302,27 @@ class MultiAgentSearchAgent(CaptureAgent):
                 captureScore = 999
             else:
                 captureScore = math.sqrt(myNewState.numCarrying) *1./self.distanceToCamp(newGameState)
-        print(str(a)+":"+str(foodScore)+","+str(ghostScore)+","+str(captureScore)+","+str(myNewState))
+                
+        if friendState.getPosition()!=None:
+            if self.getMazeDistance(Pos, friendState.getPosition())>0:
+                friendScore = 1/self.getMazeDistance(Pos, friendState.getPosition())
+            else:
+                friendScore = 1
+        #print(str(a)+":"+str(foodScore)+","+str(ghostScore)+","+str(captureScore)+","+str(myNewState))
         features['foodScore'] = foodScore
         features['ghostScore'] = ghostScore
         features['captureScore'] = captureScore
+        features['pacmanScore'] = pacmanScore
+        features['friendScore'] = friendScore
         return features
     
+    # Define weights for each of the features.
     def getWeights(self, gameState, a):
         """
         Normally, weights do not depend on the gamestate.  They can be either
         a counter or a dictionary.
         """
-
-        return {'foodScore': 1.0,'ghostScore': 1.0,'captureScore': 1.0}
+        return {'foodScore': 1.0,'ghostScore': -2.0,'captureScore': 1.0,'pacmanScore':0.0,'friendScore':-0.0}
     
     def evaluateState(self,gameState,a):
         features = self.getFeatures(gameState, a)
