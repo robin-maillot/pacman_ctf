@@ -48,7 +48,7 @@ def createTeam(firstIndex, secondIndex, isRed,
 ##########
 # Agents #
 ##########
-
+'''
 class ReflexAgent(CaptureAgent):
   """
     A reflex agent chooses an action at each choice point by examining
@@ -128,7 +128,7 @@ class ReflexAgent(CaptureAgent):
       foodScore = 1./distanceToClosestFood
 
     return foodScore + ghostScore
-
+'''
 def scoreEvaluationFunction(currentGameState):
   """
     This default evaluation function just returns the score of the state.
@@ -199,7 +199,7 @@ class MultiAgentSearchAgent(CaptureAgent):
             if(self.getMazeDistance(Pos, x)<dmin):
                 dmin=self.getMazeDistance(Pos, x)
                 goto=x
-        self.debugDraw([goto], [0,1,0])
+        self.debugDraw([goto], [0,1,0],True)
         return dmin
     
     # Main function
@@ -415,7 +415,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         a counter or a dictionary.
         """
 
-        return {'foodScore': 1.0,'ghostScore': 1.0,'captureScore': 1.0}
+        return {'foodScore': 1.0,'ghostScore': -2.0,'captureScore': 2.0,'pacmanScore':0.0,'friendScore':-1.0}
     
     def chooseAction(self, gameState):
         """
