@@ -25,6 +25,28 @@ from game import Agent
 # Team creation #
 #################
 
+#def setGlobalVariables(agentIndex)
+#    agentValue[agentIndex] = agentIndex
+
+# A shared memory class, containing a counter and a increment function. 
+# This might get weird if you play the same team vs itself. If you want to do that just copy this file and play myteam vs myteamcopy.
+class SharedMemory:
+    # this is the constructor for the class. It gets called wehn you create an instance of the class. Inits counter to 0.
+    def __init__(self):
+        self.treeAction = [0, 0];
+        
+    # increment class function. it increments its own counter by one.
+    def setTreeAction(self, agent, act):
+        self.treeAction[agent] = act
+
+    def getTreeAction(self, agent):
+        return self.treeAction[agent]
+        
+# create instance of the class. The "whatever" variable is in the global scope, so it can be accessed from your agents chooseAction function.
+sharemem = SharedMemory();
+
+
+
 def createTeam(firstIndex, secondIndex, isRed,
     first = 'FrenchCanadianAgent', second = 'FrenchCanadianAgent'):
   """
@@ -154,6 +176,7 @@ class MultiAgentSearchAgent(CaptureAgent):
     only partially specified, and designed to be extended.  Agent (game.py)
     is another abstract class.  
     """
+
     
     def registerInitialState(self, gameState):
         """
@@ -177,6 +200,16 @@ class MultiAgentSearchAgent(CaptureAgent):
         CaptureAgent.registerInitialState(self, gameState)
         self.depth = 2
         self.safe = self.safetyPlaces(gameState)
+
+        for agent in self.getTeam(gameState):
+            # Add opponents to list of enemies
+            if not agent == self.index:
+                agentId = agent
+
+        if self.index < agentId:
+            self.playerId = 0
+        else:
+            self.playerId = 1
 
         
     def safetyPlaces(self,gameState):
@@ -209,7 +242,6 @@ class MultiAgentSearchAgent(CaptureAgent):
         """
         Returns a counter of features for the state
         """
-
         features = util.Counter()
         if(a==None):
             newGameState = gameState
@@ -240,8 +272,25 @@ class MultiAgentSearchAgent(CaptureAgent):
         # getting closer to food is good
         # getting closer to ghosts is bad
     
+
+        #print("Agent = {} treeAction = {}".format(self.index, sharemem.treeAction[self.playerId]))
+
+        for agent in self.getTeam(newGameState):
+            # Add opponents to list of enemies
+            if not agent == self.index:
+                ally = newGameState.getAgentState(agent)
+                agentId = agent
+
+
+        sharemem.setTreeAction(self.playerId, self.index)
+        #print("Agent = {} treeAction = {}".format(self.index, sharemem.treeAction[self.playerId]))
+
+
+
         foodScore = 0
         Pos = myNewState.getPosition()
+
+
         distanceToClosestFood = min(map(lambda x: self.getMazeDistance(Pos, x), food.asList()))
     
         if(len(ghostPositions)>0):
@@ -269,7 +318,6 @@ class MultiAgentSearchAgent(CaptureAgent):
                     goTo = enemyP.getAgentPosition(id)
         #if(goTo!=None):
         #    self.debugDraw([goTo], [1,0,0],True)
-        #    util.pause()
             
         pacmanScore = 0
         ghostScore = 0
@@ -314,6 +362,8 @@ class MultiAgentSearchAgent(CaptureAgent):
         features['captureScore'] = captureScore
         features['pacmanScore'] = pacmanScore
         features['friendScore'] = friendScore
+
+
         return features
     
     # Define weights for each of the features.
@@ -352,6 +402,8 @@ class MultiAgentSearchAgent(CaptureAgent):
             return (self.getFoodYouAreDefending(gameState)<=2 or min(distances_to_defenders)<1)
         else:
             return (self.getFoodYouAreDefending(gameState)<=2)
+
+
 
 
 class FrenchCanadianAgent(MultiAgentSearchAgent):
@@ -427,10 +479,10 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
         maxValue = max(values)
         bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+        print(sharemem.getTreeAction(self.playerId))
         print(bestActions)
+        #util.pause()        
         #minimax(self, gameState, agentIndex, depth)
-        '''
-        You should change this in your own agent.
-        '''
-        #util.pause()
-        return random.choice(bestActions)
+
+
+        return random.choice(bestActions)        
