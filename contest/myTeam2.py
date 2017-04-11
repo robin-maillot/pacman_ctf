@@ -30,8 +30,9 @@ from game import Agent
 
 class enemyAgent(object):
     def __init__(self):
-        self.startPos = ([0, 0])
         self.id = 0
+        self.startPos = []
+        self.grid = []
 
 
     def setEnemyId(self, val):
@@ -40,7 +41,12 @@ class enemyAgent(object):
     def getEnemyId(self):
         return self.id
 
+    def setGridSize(self, val):
+        self.grid = [[0 for i in range(val[0])] for j in range(val[0])]
+        print self.grid
 
+    def getEnemyId(self):
+        return self.id
 
 # A shared memory class, containing a counter and a increment function. 
 # This might get weird if you play the same team vs itself. If you want to do that just copy this file and play myteam vs myteamcopy.
@@ -50,13 +56,9 @@ class SharedMemory(CaptureAgent):
         self.treeAction = [0, 0];
         
         self.enemy = []
-        #self.enemy.append(['enemyAgent'])
-        #self.enemy.append(['enemyAgent'])
-        thing = enemyAgent()
-        thing2 = enemyAgent()
-        thing.id = 12
-        self.enemy.append(thing)
-        self.enemy.append(thing2)
+
+        self.enemy.append(enemyAgent())
+        self.enemy.append(enemyAgent())
 
         #print layout.getLayout( options.layout )
         print self.enemy
@@ -229,6 +231,7 @@ class MultiAgentSearchAgent(CaptureAgent):
         on initialization time, please take a look at
         CaptureAgent.registerInitialState in captureAgents.py.
         '''
+        #default code
         CaptureAgent.registerInitialState(self, gameState)
         self.depth = 2
         self.safe = self.safetyPlaces(gameState)
@@ -238,18 +241,52 @@ class MultiAgentSearchAgent(CaptureAgent):
             if not agent == self.index:
                 agentId = agent
 
+        #I don't know why I have this, but it's a thing. We have ally1 and ally2
         if self.index < agentId:
             self.playerId = 0
         else:
             self.playerId = 1
 
+        #sets enemyID in sharemem
         i = 0
         for agent in self.getOpponents(gameState):
             sharemem.enemy[i].setEnemyId(agent)
             i += 1
         print "sharemem = {}" .format(sharemem.enemy[0].id)
         print "sharemem = {}" .format(sharemem.enemy[1].id)
+
+        #finds Start Position in sharemem
+        temp = []
+        for emory in sharemem.enemy:
+            emory.startPos = gameState.getAgentState(emory.id).getPosition()
+            print "startpos for agent {} = {}" .format(emory.id,emory.startPos)
+            self.debugDraw([emory.startPos], [0,1,0],True)
+        
+        #finds the Size of the group, depending if we're red or not (probably a terrible method, but it works)
+        gridSize = []
+        if gameState.isRed(gameState.getAgentState(sharemem.enemy[0].id).getPosition()): #if enemy is red, and find top-right ally
+            teamId = self.getTeam(gameState)
+            print "teamID = {}" .format(teamId)
+            if gameState.getAgentState(teamId[0]).getPosition()[1] > gameState.getAgentState(teamId[1]).getPosition()[1]:
+                gridSize = gameState.getAgentState(teamId[0]).getPosition()
+            else:
+                gridSize = gameState.getAgentState(teamId[1]).getPosition()
+        else:   #else enemy is blue and find top-right agent
+            if gameState.getAgentState(sharemem.enemy[0].id).getPosition()[1] > gameState.getAgentState(sharemem.enemy[1].id).getPosition()[1]:
+                gridSize = gameState.getAgentState(sharemem.enemy[0].id).getPosition()
+            else:
+                gridSize = gameState.getAgentState(sharemem.enemy[1].id).getPosition()
+        #gameState.getAgentState(emory.id).getPosition()
+        
+        print gridSize       
+        sharemem.enemy[0].setGridSize(gridSize)
+        sharemem.enemy[1].setGridSize(gridSize)
+
         util.pause()
+
+
+
+
 
     def safetyPlaces(self,gameState):
         safetyCoordinates = []
