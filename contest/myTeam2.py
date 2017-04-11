@@ -28,19 +28,51 @@ from game import Agent
 #def setGlobalVariables(agentIndex)
 #    agentValue[agentIndex] = agentIndex
 
+class enemyAgent(object):
+    def __init__(self):
+        self.startPos = ([0, 0])
+        self.id = 0
+
+
+    def setEnemyId(self, val):
+        self.id = val
+
+    def getEnemyId(self):
+        return self.id
+
+
+
 # A shared memory class, containing a counter and a increment function. 
 # This might get weird if you play the same team vs itself. If you want to do that just copy this file and play myteam vs myteamcopy.
-class SharedMemory:
+class SharedMemory(CaptureAgent):
     # this is the constructor for the class. It gets called wehn you create an instance of the class. Inits counter to 0.
     def __init__(self):
         self.treeAction = [0, 0];
         
-    # increment class function. it increments its own counter by one.
+        self.enemy = []
+        #self.enemy.append(['enemyAgent'])
+        #self.enemy.append(['enemyAgent'])
+        thing = enemyAgent()
+        thing2 = enemyAgent()
+        thing.id = 12
+        self.enemy.append(thing)
+        self.enemy.append(thing2)
+
+        #print layout.getLayout( options.layout )
+        print self.enemy
+        util.pause()
+        
+    # returns the state of each pacman
     def setTreeAction(self, agent, act):
         self.treeAction[agent] = act
 
     def getTreeAction(self, agent):
         return self.treeAction[agent]
+
+    def getEnemy(self, val):
+        return enemy[val]
+
+
         
 # create instance of the class. The "whatever" variable is in the global scope, so it can be accessed from your agents chooseAction function.
 sharemem = SharedMemory();
@@ -211,7 +243,14 @@ class MultiAgentSearchAgent(CaptureAgent):
         else:
             self.playerId = 1
 
-        
+        i = 0
+        for agent in self.getOpponents(gameState):
+            sharemem.enemy[i].setEnemyId(agent)
+            i += 1
+        print "sharemem = {}" .format(sharemem.enemy[0].id)
+        print "sharemem = {}" .format(sharemem.enemy[1].id)
+        util.pause()
+
     def safetyPlaces(self,gameState):
         safetyCoordinates = []
         x = gameState.data.layout.width/2
@@ -235,6 +274,12 @@ class MultiAgentSearchAgent(CaptureAgent):
         self.debugDraw([goto], [0,1,0],True)
         return dmin
     
+    def appxEnemyPos(self, gameState, a):
+        if(a==None):
+            ghostPositions = map(lambda g: g.getPosition(), ghostStates)
+        return 0;
+
+
     # Main function
     # Used to calculate all the resulting features from an action.
     # So far takes into account: distance to the border, distance to closest ghost, distance to closest food and distance to closest pacman
@@ -267,6 +312,7 @@ class MultiAgentSearchAgent(CaptureAgent):
         food = self.getFood(newGameState)
         #ghostStates = self.getGhostStates(gameState) 
         ghostPositions = map(lambda g: g.getPosition(), ghostStates)
+        print("ghostpositions: {}".format(ghostPositions))
     #    computeMazeDistances(walls)
     
         # getting closer to food is good
@@ -481,6 +527,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         bestActions = [a for a, v in zip(actions, values) if v == maxValue]
         print(sharemem.getTreeAction(self.playerId))
         print(bestActions)
+        #print(shareMemory.getEnemy(0).id)
         #util.pause()        
         #minimax(self, gameState, agentIndex, depth)
 
