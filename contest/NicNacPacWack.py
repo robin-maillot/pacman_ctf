@@ -20,6 +20,9 @@ from util import manhattanDistance
 import math
 import random, util
 from game import Agent
+from copy import copy, deepcopy
+from capture import SONAR_NOISE_RANGE, SONAR_NOISE_VALUES, SIGHT_RANGE
+
 
 #################
 # Team creation #
@@ -27,13 +30,14 @@ from game import Agent
 
 #def setGlobalVariables(agentIndex)
 #    agentValue[agentIndex] = agentIndex
+SONAR_MAX = (SONAR_NOISE_RANGE - 1)/2
 
 class enemyAgent(object):
     def __init__(self):
         self.id = 0
         self.startPos = []
         self.grid = []
-
+        self.touchingAgent = False
 
     def setEnemyId(self, val):
         self.id = val
@@ -42,11 +46,130 @@ class enemyAgent(object):
         return self.id
 
     def setGridSize(self, val):
-        self.grid = [[0 for i in range(val[0])] for j in range(val[0])]
-        print self.grid
+        self.grid = [[0 for i in range(val[1])] for j in range(val[0])]
+        print "val: {}".format(val)
 
-    def getEnemyId(self):
-        return self.id
+    def setGhostStart(self):
+        self.grid = [[0 for i in range(len(self.grid[0]))] for j in range(len(self.grid))]
+        self.grid[self.startPos[0]][self.startPos[1]] = 1
+
+    def setTouchingAgent(self):
+        self.touchingAgent = True
+
+    def notTouchingAgent(self):
+        self.touchingAgent = False
+
+    def checkIfDead(self):
+        x=1
+        #if self.touchingAgent = True and getPo
+
+    def updateGridMeasurment(self, selfcopy, gameState, measurement):
+
+        Pos = gameState.getAgentState(selfcopy.index).getPosition()
+        print "gridmeasx: {}".format(len(self.grid[0]))
+        print "gridmeasy: {}".format(len(self.grid))
+        print "Pos: {}".format(Pos)
+        print "measurement: {}".format(measurement)       
+
+        for x in range(0,len(self.grid)):
+            #util.pause()
+            for y in range(0,len(self.grid[0])):
+                #print "x: {}, y: {}".format(x, y)
+                #print "ghost: {}, location: [{},{}], value: {}".format(self.id, x, y, self.grid[y][x])
+                if self.grid[x][y] > 0:
+                    #selfcopy.debugDraw((x, y), [self.grid[x][y],0,self.grid[x][y]],False)
+                    #print "distance: {}".format(util.manhattanDistance(Pos, (x,y)))
+                    dist = util.manhattanDistance(Pos, (x,y))
+                    if abs(dist - measurement) > SONAR_MAX+1: #+1 is magic
+                        self.grid[x][y] = 0
+                        selfcopy.debugDraw((x, y), [0,0,0],False)
+                        if selfcopy.playerId == 0:
+                            print "enemy: {}, distance: {}, measurement: {}".format(self.id, dist, measurement)
+                    #print "distance: {}".format(selfcopy.distancer.getDistance(Pos, (x,y)))
+                    #print "distance: {}".format(selfcopy.distancer.getDistanceOnGrid(Pos, (x,y)))
+                    #print "distance: {}".format(selfcopy.getMazeDistance(Pos, (x,y)))
+        #util.pause()
+
+
+
+    def updateGridMotion(self, selfcopy, gameState):
+        print "x: {}".format(len(self.grid))
+        print "y: {}".format(len(self.grid[0]))
+        prevgrid = deepcopy(self.grid)
+
+        dx = [1, 0, -1, 0]
+        dy = [0, 1, 0, -1]
+
+        walls = gameState.getWalls()
+        #print walls
+        #print "type: {}".format(getattr(walls))
+        
+        """for attr_name in dir(walls):
+            attr_value = getattr(walls, attr_name)
+            print(attr_name, attr_value, callable(attr_value))"""
+
+
+        """print "wallx : {}".format(len(walls.data))
+        print "wally : {}".format(len(walls.data[0]))
+
+        print "akkkkkkk"
+        for z in range(0,len(self.grid)):
+            print self.grid[z]
+        #util.pause()
+
+        print "ahhhhhh" """
+        minimum = 9001
+        for row in self.grid:
+            for i in range(0,len(self.grid[0])):
+                if row[i] > 0 and row[i] < minimum:
+                    minimum = row[i]
+        print minimum
+
+        for x in range(0,len(self.grid)):
+            #util.pause()
+            for y in range(0,len(self.grid[0])):
+                #print "x: {}, y: {}".format(x, y)
+                #print "ghost: {}, location: [{},{}], value: {}".format(self.id, x, y, self.grid[x][y])
+                if prevgrid[x][y] > 0:
+                    for i in range(0,4):
+                        #if x+dx[i] >= len(self.grid) or x+dx[i] < 0 or y+dy[i] >= len(self.grid[0]) or y+dy[i] < 0:
+                        if not walls.data[x+dx[i]][y+dy[i]]:
+                            try:
+                                #if not self.grid[x+dx[i]][y+dy[i]] > 0.75:
+                                self.grid[x+dx[i]][y+dy[i]] = minimum
+                            except Exception:
+                                print "terrible, terrible problem"
+                                print "Agent: {}, location: [{},{}], value: {}".format(self.id, x, y, self.grid[x][y])
+                                print "[x+dx,y+dy]: [{},{}], isWall: {}".format(x+dx[i], y+dy[i], walls.data[x+dx[i]][y+dy[i]])
+                                raise
+                                util.pause()
+                        else:
+                            #print "wall: {}, location: [{},{}], value: {}".format(self.id, x, y, self.grid[x][y])
+                            #selfcopy.debugDraw((x+dx[i], y+dy[i]), [1,0,0],False)   
+                            continue
+        totalsum = 0
+        for row in self.grid:
+            totalsum += sum(row)
+        print "chugalug"
+        print totalsum
+        for row in self.grid:
+            if sum(row) > 0:
+                row = [float(i)/totalsum for i in row]
+
+    def exactPosition(self, measurement):
+        self.grid = [[0 for i in range(len(self.grid[0]))] for j in range(len(self.grid))]
+        self.grid[int(measurement[0])][int(measurement[1])] = 1
+
+
+    def drawGrid(self, selfcopy):
+        for x in range(0,len(self.grid)):
+            #util.pause()
+            for y in range(0,len(self.grid[0])):
+                #print "x: {}, y: {}".format(x, y)
+                #print "ghost: {}, location: [{},{}], value: {}".format(self.id, x, y, self.grid[y][x])
+                if self.grid[x][y] > 0:
+                    selfcopy.debugDraw((x, y), [1,0,1],False)
+
 
 # A shared memory class, containing a counter and a increment function. 
 # This might get weird if you play the same team vs itself. If you want to do that just copy this file and play myteam vs myteamcopy.
@@ -62,7 +185,7 @@ class SharedMemory(CaptureAgent):
 
         #print layout.getLayout( options.layout )
         print self.enemy
-        util.pause()
+        #util.pause()
         
     # returns the state of each pacman
     def setTreeAction(self, agent, act):
@@ -252,19 +375,21 @@ class MultiAgentSearchAgent(CaptureAgent):
         for agent in self.getOpponents(gameState):
             sharemem.enemy[i].setEnemyId(agent)
             i += 1
-        print "sharemem = {}" .format(sharemem.enemy[0].id)
-        print "sharemem = {}" .format(sharemem.enemy[1].id)
+        #print "sharemem = {}" .format(sharemem.enemy[0].id)
+        #print "sharemem = {}" .format(sharemem.enemy[1].id)
 
         #finds Start Position in sharemem
         temp = []
         for emory in sharemem.enemy:
-            emory.startPos = gameState.getAgentState(emory.id).getPosition()
-            print "startpos for agent {} = {}" .format(emory.id,emory.startPos)
-            self.debugDraw([emory.startPos], [0,1,0],True)
+            #emory.startPos = gameState.getAgentState(emory.id).getPosition()
+            emory.startPos = gameState.getInitialAgentPosition(emory.id)
+            #print "startpos for agent {} = {}" .format(emory.id,emory.startPos)
+            self.debugDraw([emory.startPos], [0,1,0],False)
         
         #finds the Size of the group, depending if we're red or not (probably a terrible method, but it works)
         gridSize = []
-        if gameState.isRed(gameState.getAgentState(sharemem.enemy[0].id).getPosition()): #if enemy is red, and find top-right ally
+
+        """if gameState.isRed(gameState.getAgentState(sharemem.enemy[0].id).getPosition()): #if enemy is red, and find top-right ally
             teamId = self.getTeam(gameState)
             print "teamID = {}" .format(teamId)
             if gameState.getAgentState(teamId[0]).getPosition()[1] > gameState.getAgentState(teamId[1]).getPosition()[1]:
@@ -275,14 +400,18 @@ class MultiAgentSearchAgent(CaptureAgent):
             if gameState.getAgentState(sharemem.enemy[0].id).getPosition()[1] > gameState.getAgentState(sharemem.enemy[1].id).getPosition()[1]:
                 gridSize = gameState.getAgentState(sharemem.enemy[0].id).getPosition()
             else:
-                gridSize = gameState.getAgentState(sharemem.enemy[1].id).getPosition()
+                gridSize = gameState.getAgentState(sharemem.enemy[1].id).getPosition()"""
         #gameState.getAgentState(emory.id).getPosition()
-        
-        print gridSize       
+        walls = gameState.getWalls()
+        gridSize = [len(walls.data), len(walls.data[0])]
+        #print gridSize       
         sharemem.enemy[0].setGridSize(gridSize)
         sharemem.enemy[1].setGridSize(gridSize)
-
-        util.pause()
+        sharemem.enemy[0].setGhostStart()
+        sharemem.enemy[1].setGhostStart()
+        sharemem.enemy[0].updateGridMotion(self, gameState) 
+        sharemem.enemy[1].updateGridMotion(self, gameState) 
+        #util.pause()
 
 
 
@@ -349,7 +478,7 @@ class MultiAgentSearchAgent(CaptureAgent):
         food = self.getFood(newGameState)
         #ghostStates = self.getGhostStates(gameState) 
         ghostPositions = map(lambda g: g.getPosition(), ghostStates)
-        print("ghostpositions: {}".format(ghostPositions))
+        #print("ghostpositions: {}".format(ghostPositions))
     #    computeMazeDistances(walls)
     
         # getting closer to food is good
@@ -552,21 +681,100 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
         return {'foodScore': 1.0,'ghostScore': -2.0,'captureScore': 2.0,'pacmanScore':0.0,'friendScore':-1.0}
     
+    def updateGridMeasurment(self, gameState):
+        #print "self: {}, self+1%4: {}".format(self.index,(self.index+1)%4)
+        enemyAfter = 0
+        if not sharemem.enemy[enemyAfter].id == (self.index+1)%4:
+            enemyAfter =1
+        sharemem.enemy[enemyAfter].updateGridMotion(self, gameState)      #first updates motion model
+
+        #sharemem.enemy[(self.index+1)%4].updateGridMotion(self, gameState)      #first updates motion model
+        for emy in sharemem.enemy:
+
+            """print "self"
+            for attr_name in dir(self):
+                attr_value = getattr(self, attr_name)
+                print(attr_name, callable(attr_value))
+            util.pause()
+
+
+            print "ded"
+            print self.evaluateState()
+            for attr_name in dir(self.getPreviousObservation()):
+                attr_value = getattr(self.getPreviousObservation(), attr_name)
+                print(attr_name, callable(attr_value))
+            util.pause()
+
+            print "gameState"
+            for attr_name in dir(gameState.getAgentState(emy.id)):
+                attr_value = getattr(gameState.getAgentState(emy.id), attr_name)
+                print(attr_name, callable(attr_value))
+            util.pause()""
+
+
+            if gameState.GhostRules().checkDeath(emy.id):
+                print"ded dead"
+                util.pause()"""
+            emy.updateGridMeasurment(self, gameState, gameState.getAgentDistances()[emy.id])   #incorperates noisy sonar measurement
+            if gameState.getAgentState(emy.id).getPosition() != None:       #if we see the enemy agent, update their position
+                emy.exactPosition(gameState.getAgentState(emy.id).getPosition())
+                print "EnemyPos: {}".format(gameState.getAgentState(emy.id).getPosition())
+                print "OurPos: {}".format(gameState.getAgentState(self.index).getPosition())
+
+                for agent in self.getTeam(gameState):
+                    if self.getMazeDistance(gameState.getAgentState(emy.id).getPosition(), gameState.getAgentState(agent).getPosition()) < 2:
+                        emy.setTouchingAgent()  #first check if agent is touching
+            else:
+                if emy.touchingAgent:   #the agent is out of range and has thus jumped 6 sonar levels
+                    print gameState.getAgentState(emy.id).isPacman
+                    print "he deeeed"
+                    util.pause()
+                emy.notTouchingAgent()  #otherwise everything is fine, carry on.
+                        #util.pause()
+                    #if not agent == self.index:
+                    #    allyId = agent
+
+                #for ally in allies: #gameState.getAgentState(self.getTeam(gameState)[0]):
+
+
+
+
+
+        if self.playerId == 0:
+            sharemem.enemy[0].drawGrid(self)
+            """print "entering gridmeasure"
+            print sharemem.getTreeAction(self.playerId)
+            print gameState.getAgentDistances()     #Noisy Data!!!
+            #print self.getCurrentObservation()
+            print "distancer: ".format(self.distancer.getMazeDistances())#(self.index, sharemem.enemy[0].id))"""
+            
+
+
+
+
+
     def chooseAction(self, gameState):
         """
         Picks among actions randomly.
         """
         actions = gameState.getLegalActions(self.index)
         values = [self.evaluateState(gameState,a) for a in actions]
-        #values = [self.minmax(gameState.generateSuccessor(self.index, a),self.index,0) for a in actions]
-
         maxValue = max(values)
         bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-        print(sharemem.getTreeAction(self.playerId))
-        print(bestActions)
+        #values = [self.minmax(gameState.generateSuccessor(self.index, a),self.index,0) for a in actions]
+        
+        self.updateGridMeasurment(gameState)
+        #print(bestActions)
+        
+        #print "MakeObservsation1: {}".format(self.getMazeDistance(self.getPosition, enemyP.getAgentPosition(id)))
+
+        #print "MakeObservsation1: {}".format(gameState.makeObservation(sharemem.enemy[1].id))
+
+
+
         #print(shareMemory.getEnemy(0).id)
-        #util.pause()        
+                
         #minimax(self, gameState, agentIndex, depth)
 
 
-        return random.choice(bestActions)        
+        return random.choice(bestActions)
