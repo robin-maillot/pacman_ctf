@@ -21,7 +21,7 @@ import math
 import random, util
 from game import Agent
 from copy import copy, deepcopy
-from capture import SONAR_NOISE_RANGE, SONAR_NOISE_VALUES, SIGHT_RANGE, COLLISION_TOLERANCE
+from capture import SONAR_NOISE_RANGE, SONAR_NOISE_VALUES, SIGHT_RANGE, COLLISION_TOLERANCE, MIN_FOOD
 
 
 #################
@@ -78,7 +78,7 @@ class enemyAgent(object):
                     #selfcopy.debugDraw((x, y), [self.grid[x][y],0,self.grid[x][y]],False)
                     #print "distance: {}".format(util.manhattanDistance(Pos, (x,y)))
                     dist = util.manhattanDistance(Pos, (x,y))
-                    if abs(dist - measurement) > SONAR_MAX+1: #+1 is magic
+                    if abs(dist - measurement) >= SONAR_MAX+1: #+1 is magic
                         self.grid[x][y] = 0
                         selfcopy.debugDraw((x, y), [0,0,0],False)
                         #if selfcopy.playerId == 0:
@@ -644,14 +644,27 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
             return True
         return False
 
+
+    def noFoodLeft(self, gameState):
+        if len(self.getFood(gameState).asList()) < MIN_FOOD:
+            return True
+        return False
+
+
     def returnToBase(self):
         self.setWeights([0, 1, 1, 0, 0]) #food, ghost, capture, pacman, friend
+
 
     def behaviorTree(self, gameState):
         actions = gameState.getLegalActions(self.index)
 
         if self.evalRunningOutOfTime(gameState):
             self.returnToBase()
+        elif self.noFoodLeft(gameState):
+            self.returnToBase()
+            print "out of food"
+        else:
+            self.setDefaultWeights()
             #print "weights: {}".format(self.getWeights(gameState))
 
         #Calls MinMax
@@ -662,7 +675,6 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         move = random.choice(bestActions)     
 
         return move
-
 
 
     def chooseAction(self, gameState):
