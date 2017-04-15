@@ -241,90 +241,11 @@ def createTeam(firstIndex, secondIndex, isRed,
   # The following line is an example only; feel free to change it.
   return [eval(first)(firstIndex), eval(second)(secondIndex)]
 
+
 ##########
 # Agents #
 ##########
-'''
-class ReflexAgent(CaptureAgent):
-  """
-    A reflex agent chooses an action at each choice point by examining
-    its alternatives via a state evaluation function.
-    The code below is provided as a guide.  You are welcome to change
-    it in any way you see fit, so long as you don't touch our method
-    headers.
-  """
-  
-    
-  def getAction(self, gameState):
-    """
-    You do not need to change this method, but you're welcome to.
-    getAction chooses among the best options according to the evaluation function.
-    
-    Just like in the previous project, getAction takes a GameState and returns
-    some Directions.X for some X in the set {North, South, West, East, Stop}
-    """
-    # Collect legal moves and successor states
-    legalMoves = gameState.getLegalActions()
 
-    # Choose one of the best actions
-    scores = [self.evaluationFunction(gameState, action) for action in legalMoves]
-    bestScore = max(scores)
-    bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
-    chosenIndex = random.choice(bestIndices) # Pick randomly among the best
-    
-    "Add more of your code here if you want to"
-    
-    return legalMoves[chosenIndex]
-  
-  def evaluationFunction(self, currentGameState, action):
-    """
-    Design a better evaluation function here. 
-    
-    The evaluation function takes in the current and proposed successor
-    GameStates (pacman.py) and returns a number, where higher numbers are better.
-    
-    The code below extracts some useful information from the state, like the 
-    remaining food (oldFood) and Pacman position after moving (newPos).
-    newScaredTimes holds the number of moves that each ghost will remain
-    scared because of Pacman having eaten a power pellet.
-    
-    Print out these variables to see what you're getting, then combine them
-    to create a masterful evaluation function.
-    """
-    # Useful information you can extract from a GameState (pacman.py)
-    successorGameState = currentGameState.generatePacmanSuccessor(action)
-    walls = currentGameState.getWalls()
-    newPos = successorGameState.getPacmanPosition()
-    oldFood = currentGameState.getFood()
-    newGhostStates = successorGameState.getGhostStates() 
-    ghostPositions = map(lambda g: g.getPosition(), newGhostStates)
-#    computeMazeDistances(walls)
-
-    # getting closer to food is good
-    # getting closer to ghosts is bad
-
-    foodScore = 0
-#    distanceToClosestFood = min(map(lambda x: getDistanceInMaze(newPos, x), oldFood.asList()))
-    distanceToClosestFood = min(map(lambda x: util.manhattanDistance(newPos, x), oldFood.asList()))
-
-    distanceToClosestGhost = min(map(lambda x: util.manhattanDistance(newPos, x), 
-                                     ghostPositions))
-
-    ghostScore = 0
-    foodScore = 0
-    if distanceToClosestGhost == 0:
-      return -99
-    elif distanceToClosestGhost < 6:
-      ghostScore = (1./distanceToClosestGhost) * -2
-    
-    if distanceToClosestFood == 0:
-      foodScore = 0
-      ghostScore += 2
-    else:
-      foodScore = 1./distanceToClosestFood
-
-    return foodScore + ghostScore
-'''
 def scoreEvaluationFunction(currentGameState):
   """
     This default evaluation function just returns the score of the state.
@@ -353,25 +274,6 @@ class MultiAgentSearchAgent(CaptureAgent):
 
     
     def registerInitialState(self, gameState):
-        """
-        This method handles the initial setup of the
-        agent to populate useful fields (such as what team
-        we're on).
-    
-        A distanceCalculator instance caches the maze distances
-        between each pair of positions, so your agents can use:
-        self.distancer.getDistance(p1, p2)
-    
-        IMPORTANT: This method may run for at most 15 seconds.
-        """
-    
-        '''
-        Make sure you do not delete the following line. If you would like to
-        use Manhattan distances instead of maze distances in order to save
-        on initialization time, please take a look at
-        CaptureAgent.registerInitialState in captureAgents.py.
-        '''
-        #default code
         CaptureAgent.registerInitialState(self, gameState)
         self.depth = 2
         self.safe = self.safetyPlaces(gameState)
@@ -406,19 +308,6 @@ class MultiAgentSearchAgent(CaptureAgent):
         #finds the Size of the group, depending if we're red or not (probably a terrible method, but it works)
         gridSize = []
 
-        """if gameState.isRed(gameState.getAgentState(sharemem.enemy[0].id).getPosition()): #if enemy is red, and find top-right ally
-            teamId = self.getTeam(gameState)
-            print "teamID = {}" .format(teamId)
-            if gameState.getAgentState(teamId[0]).getPosition()[1] > gameState.getAgentState(teamId[1]).getPosition()[1]:
-                gridSize = gameState.getAgentState(teamId[0]).getPosition()
-            else:
-                gridSize = gameState.getAgentState(teamId[1]).getPosition()
-        else:   #else enemy is blue and find top-right agent
-            if gameState.getAgentState(sharemem.enemy[0].id).getPosition()[1] > gameState.getAgentState(sharemem.enemy[1].id).getPosition()[1]:
-                gridSize = gameState.getAgentState(sharemem.enemy[0].id).getPosition()
-            else:
-                gridSize = gameState.getAgentState(sharemem.enemy[1].id).getPosition()"""
-        #gameState.getAgentState(emory.id).getPosition()
         walls = gameState.getWalls()
         gridSize = [len(walls.data), len(walls.data[0])]
         #print gridSize       
@@ -429,9 +318,6 @@ class MultiAgentSearchAgent(CaptureAgent):
         sharemem.enemy[0].updateGridMotion(self, gameState) 
         sharemem.enemy[1].updateGridMotion(self, gameState) 
         #util.pause()
-
-
-
 
 
     def safetyPlaces(self,gameState):
@@ -495,14 +381,6 @@ class MultiAgentSearchAgent(CaptureAgent):
         food = self.getFood(newGameState)
         #ghostStates = self.getGhostStates(gameState) 
         ghostPositions = map(lambda g: g.getPosition(), ghostStates)
-        #print("ghostpositions: {}".format(ghostPositions))
-    #    computeMazeDistances(walls)
-    
-        # getting closer to food is good
-        # getting closer to ghosts is bad
-    
-
-        #print("Agent = {} treeAction = {}".format(self.index, sharemem.treeAction[self.playerId]))
 
         for agent in self.getTeam(newGameState):
             # Add opponents to list of enemies
@@ -713,27 +591,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
             for attr_name in dir(self):
                 attr_value = getattr(self, attr_name)
                 print(attr_name, callable(attr_value))
-            util.pause()
-
-            print "ded"
-            print self.evaluateState()
-            for attr_name in dir(self.getPreviousObservation()):
-                attr_value = getattr(self.getPreviousObservation(), attr_name)
-                print(attr_name, callable(attr_value))
-            util.pause()
-
-            
-            print "gameState"
-            for attr_name in dir(gameState.getAgentState(self.index)):
-                attr_value = getattr(gameState.getAgentState(self.index), attr_name)
-                print(attr_name, callable(attr_value))
-            util.pause()
-            
-
-
-            if gameState.GhostRules().checkDeath(emy.id):
-                print"ded dead"
-                util.pause()"""
+            util.pause()"""
 
             emy.updateGridMeasurment(self, gameState, gameState.getAgentDistances()[emy.id])   #incorperates noisy sonar measurement
             #print gameState.isScared(self.index)
@@ -746,7 +604,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
                 if self.getMazeDistance(gameState.getAgentState(emy.id).getPosition(), gameState.getAgentState(self.index).getPosition()) < 1.5:
                     emy.setTouchingAgent(self.playerId)  #first check if agent is touching
-                    print "our agent {} is touching {}".format(self.index, emy.id)
+                    #print "our agent {} is touching {}".format(self.index, emy.id)
 
             else:
                 #print "team: {}, agentnum: {}, index: {}".format(self.getTeam(gameState),agentNum, self.index)
@@ -767,21 +625,8 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         self.getCapsules(gameState)
 
 
-
-
-
         if self.playerId == 0:
-            sharemem.enemy[0].drawGrid(self)
-            """
-            #print "entering gridmeasure"
-            #print sharemem.getTreeAction(self.playerId)
-            #print gameState.getAgentDistances()     #Noisy Data!!!
-            ##print self.getCurrentObservation()
-            #print "distancer: ".format(self.distancer.getMazeDistances())#(self.index, sharemem.enemy[0].id))"""
-            
-
-
-
+            sharemem.enemy[0].drawGrid(self)    
 
 
     def chooseAction(self, gameState):
@@ -807,6 +652,6 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         #print(shareMemory.getEnemy(0).id)
                 
         #minimax(self, gameState, agentIndex, depth)
-        #print "waka"
+        print "waka"
 
         return random.choice(bestActions)
