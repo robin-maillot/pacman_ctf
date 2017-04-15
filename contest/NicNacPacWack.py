@@ -213,11 +213,14 @@ class SharedMemory(CaptureAgent):
 
     def getEnemy(self, val):
         return enemy[val]
-
-
         
 # create instance of the class. The "whatever" variable is in the global scope, so it can be accessed from your agents chooseAction function.
 sharemem = SharedMemory();
+
+
+#########################################################################################################################
+###########################################  Our Team  ##################################################################
+#########################################################################################################################
 
 
 
@@ -317,7 +320,8 @@ class MultiAgentSearchAgent(CaptureAgent):
         sharemem.enemy[1].setGhostStart()
         sharemem.enemy[0].updateGridMotion(self, gameState) 
         sharemem.enemy[1].updateGridMotion(self, gameState) 
-        #util.pause()
+        
+        
 
 
     def safetyPlaces(self,gameState):
@@ -475,16 +479,14 @@ class MultiAgentSearchAgent(CaptureAgent):
         return features
     
     # Define weights for each of the features.
-    def getWeights(self, gameState, a):
-        """
-        Normally, weights do not depend on the gamestate.  They can be either
-        a counter or a dictionary.
-        """
-        return {'foodScore': 1.0,'ghostScore': -2.0,'captureScore': 1.0,'pacmanScore':0.0,'friendScore':-0.0}
+
+
+    def getWeights(self, gameState):
+        return {'foodScore': self.foodScore,'ghostScore': self.ghostScore,'captureScore': self.captureScore,'pacmanScore':self.pacmanScore,'friendScore':self.friendScore}
     
     def evaluateState(self,gameState,a):
         features = self.getFeatures(gameState, a)
-        weights = self.getWeights(gameState, a)
+        weights = self.getWeights(gameState)
         return features * weights
     
     def isWon(self,gameState):
@@ -511,72 +513,6 @@ class MultiAgentSearchAgent(CaptureAgent):
         else:
             return (self.getFoodYouAreDefending(gameState)<=2)
 
-
-
-
-class FrenchCanadianAgent(MultiAgentSearchAgent):
-    """
-    A Dummy agent to serve as an example of the necessary agent structure.
-    You should look at baselineTeam.py for more details about how to
-    create an agent as this is the bare minimum.
-    """
-
-    def registerInitialState(self, gameState):
-        """
-        This method handles the initial setup of the
-        agent to populate useful fields (such as what team
-        we're on).
-        
-        A distanceCalculator instance caches the maze distances
-        between each pair of positions, so your agents can use:
-        self.distancer.getDistance(p1, p2)
-        
-        IMPORTANT: This method may run for at most 15 seconds.
-        """
-        
-        '''
-        Make sure you do not delete the following line. If you would like to
-        use Manhattan distances instead of maze distances in order to save
-        on initialization time, please take a look at
-        CaptureAgent.registerInitialState in captureAgents.py.
-        '''
-        MultiAgentSearchAgent.registerInitialState(self, gameState)
-        
-        '''
-        Your initialization code goes here, if you need any.
-        '''
-
-    def gameOver(self, gameState, d):
-        enemies = []
-        # Check the indices of the opponents...
-        for agent in self.getOpponents(gameState):
-            # Add opponents to list of enemies
-            enemies.append(gameState.getAgentState(agent))
-        return self.isLost(gameState,enemies) or self.isWon(gameState) or d == 0
-    
-    
-    def minmax(self, gameState, agentIndex, depth):
-        "produces the min or max value for some game state and depth; depends on what agent."
-        successorStates = map(lambda a: gameState.generateSuccessor(agentIndex, a),gameState.getLegalActions(agentIndex))
-        if self.gameOver(gameState, depth): # at an end
-            return self.evaluateState(gameState,None)
-        else:
-            # use modulo so we can wrap around, get vals of leaves
-            nextAgent = (agentIndex + 1) % gameState.getNumAgents()
-            vals = map(lambda s: self.minmax(s, nextAgent, depth - 1),successorStates)      
-            if nextAgent == 0: # pacman
-                return max(vals)
-            else:
-                return min(vals)
-    
-    def getWeights(self, gameState, a):
-        """
-        Normally, weights do not depend on the gamestate.  They can be either
-        a counter or a dictionary.
-        """
-
-        return {'foodScore': 1.0,'ghostScore': -2.0,'captureScore': 2.0,'pacmanScore':0.0,'friendScore':-1.0}
-    
     def updateGridMeasurment(self, gameState):
         #print "self: {}, self+1%4: {}".format(self.index,(self.index+1)%4)
         enemyAfter = 0
@@ -595,8 +531,6 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
             emy.updateGridMeasurment(self, gameState, gameState.getAgentDistances()[emy.id])   #incorperates noisy sonar measurement
             #print gameState.isScared(self.index)
-
-
 
 
             if gameState.getAgentState(emy.id).getPosition() != None:       #if we see the enemy agent, update their position
@@ -626,32 +560,120 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
 
         if self.playerId == 0:
-            sharemem.enemy[0].drawGrid(self)    
+            sharemem.enemy[0].drawGrid(self)   
+
+
+class FrenchCanadianAgent(MultiAgentSearchAgent):
+    """
+    A Dummy agent to serve as an example of the necessary agent structure.
+    You should look at baselineTeam.py for more details about how to
+    create an agent as this is the bare minimum.
+    """
+
+    def registerInitialState(self, gameState):
+        """
+        This method handles the initial setup of the
+        agent to populate useful fields (such as what team
+        we're on).
+        
+        A distanceCalculator instance caches the maze distances
+        between each pair of positions, so your agents can use:
+        self.distancer.getDistance(p1, p2)
+        
+        IMPORTANT: This method may run for at most 15 seconds.
+        """
+        
+        '''
+        Make sure you do not delete the following line. If you would like to
+        use Manhattan distances instead of maze distances in order to save
+        on initialization time, please take a look at
+        CaptureAgent.registerInitialState in captureAgents.py.
+        '''
+        MultiAgentSearchAgent.registerInitialState(self, gameState)
+
+        self.setDefaultWeights()
+        
+        '''
+        Your initialization code goes here, if you need any.
+        '''
+
+    def gameOver(self, gameState, d):
+        enemies = []
+        # Check the indices of the opponents...
+        for agent in self.getOpponents(gameState):
+            # Add opponents to list of enemies
+            enemies.append(gameState.getAgentState(agent))
+        return self.isLost(gameState,enemies) or self.isWon(gameState) or d == 0
+    
+    
+    def minmax(self, gameState, agentIndex, depth):
+        "produces the min or max value for some game state and depth; depends on what agent."
+        successorStates = map(lambda a: gameState.generateSuccessor(agentIndex, a),gameState.getLegalActions(agentIndex))
+        if self.gameOver(gameState, depth): # at an end
+            return self.evaluateState(gameState,None)
+        else:
+            # use modulo so we can wrap around, get vals of leaves
+            nextAgent = (agentIndex + 1) % gameState.getNumAgents()
+            vals = map(lambda s: self.minmax(s, nextAgent, depth - 1),successorStates)      
+            if nextAgent == 0: # pacman
+                return max(vals)
+            else:
+                return min(vals)
+    
+
+    def setDefaultWeights(self):
+        self.foodScore = 1.0
+        self.ghostScore = -2.0
+        self.captureScore = 1.0
+        self.pacmanScore = 0.0
+        self.friendScore = -0.0
+
+    def setWeights(self, weight):
+        self.foodScore = weight[0]
+        self.ghostScore = weight[1]
+        self.captureScore = weight[2]
+        self.pacmanScore = weight[3]
+        self.friendScore = weight[4]
+
+
+    def evalRunningOutOfTime(self, gameState):
+        time = gameState.data.timeleft
+        toBase = self.distanceToCamp(gameState)*4
+        THRESHOLD = 10*4 #turns
+        if time < toBase + THRESHOLD and gameState.getAgentState(self.index).isPacman:
+            return True
+        return False
+
+    def returnToBase(self):
+        self.setWeights([0, 1, 1, 0, 0]) #food, ghost, capture, pacman, friend
+
+    def behaviorTree(self, gameState):
+        actions = gameState.getLegalActions(self.index)
+
+        if self.evalRunningOutOfTime(gameState):
+            self.returnToBase()
+            #print "weights: {}".format(self.getWeights(gameState))
+
+        #Calls MinMax
+        values = [self.evaluateState(gameState,a) for a in actions]
+        maxValue = max(values)
+        
+        bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+        move = random.choice(bestActions)     
+
+        return move
+
 
 
     def chooseAction(self, gameState):
-        """
-        Picks among actions randomly.
-        """
-        actions = gameState.getLegalActions(self.index)
-        values = [self.evaluateState(gameState,a) for a in actions]
-        maxValue = max(values)
-        bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+
+        movement = self.behaviorTree(gameState)
         #values = [self.minmax(gameState.generateSuccessor(self.index, a),self.index,0) for a in actions]
         
         self.updateGridMeasurment(gameState)
         self.previousLocation = gameState.getAgentState(self.index).getPosition()
-        #print(bestActions)
-        
-        #print "MakeObservsation1: {}".format(self.getMazeDistance(self.getPosition, enemyP.getAgentPosition(id)))
-
-        #print "MakeObservsation1: {}".format(gameState.makeObservation(sharemem.enemy[1].id))
-
-
-
-        #print(shareMemory.getEnemy(0).id)
                 
         #minimax(self, gameState, agentIndex, depth)
         print "waka"
 
-        return random.choice(bestActions)
+        return movement
