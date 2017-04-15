@@ -21,7 +21,7 @@ import math
 import random, util
 from game import Agent
 from copy import copy, deepcopy
-from capture import SONAR_NOISE_RANGE, SONAR_NOISE_VALUES, SIGHT_RANGE
+from capture import SONAR_NOISE_RANGE, SONAR_NOISE_VALUES, SIGHT_RANGE, COLLISION_TOLERANCE
 
 
 #################
@@ -37,7 +37,7 @@ class enemyAgent(object):
         self.id = 0
         self.startPos = []
         self.grid = []
-        self.touchingAgent = False
+        self.touchingAgent = [False, False]
 
     def setEnemyId(self, val):
         self.id = val
@@ -47,29 +47,27 @@ class enemyAgent(object):
 
     def setGridSize(self, val):
         self.grid = [[0 for i in range(val[1])] for j in range(val[0])]
-        print "val: {}".format(val)
+        #print "val: {}".format(val)
 
     def setGhostStart(self):
         self.grid = [[0 for i in range(len(self.grid[0]))] for j in range(len(self.grid))]
         self.grid[self.startPos[0]][self.startPos[1]] = 1
+        self.touchingAgent = [False, False]
 
-    def setTouchingAgent(self):
-        self.touchingAgent = True
+    def setTouchingAgent(self, agent):
+        self.touchingAgent[agent] = True
 
-    def notTouchingAgent(self):
-        self.touchingAgent = False
+    def notTouchingAgent(self, agent):
+        self.touchingAgent[agent] = False
 
-    def checkIfDead(self):
-        x=1
-        #if self.touchingAgent = True and getPo
 
     def updateGridMeasurment(self, selfcopy, gameState, measurement):
 
         Pos = gameState.getAgentState(selfcopy.index).getPosition()
-        print "gridmeasx: {}".format(len(self.grid[0]))
-        print "gridmeasy: {}".format(len(self.grid))
-        print "Pos: {}".format(Pos)
-        print "measurement: {}".format(measurement)       
+        #print "gridmeasx: {}".format(len(self.grid[0]))
+        #print "gridmeasy: {}".format(len(self.grid))
+        #print "Pos: {}".format(Pos)
+        #print "measurement: {}".format(measurement)       
 
         for x in range(0,len(self.grid)):
             #util.pause()
@@ -83,8 +81,8 @@ class enemyAgent(object):
                     if abs(dist - measurement) > SONAR_MAX+1: #+1 is magic
                         self.grid[x][y] = 0
                         selfcopy.debugDraw((x, y), [0,0,0],False)
-                        if selfcopy.playerId == 0:
-                            print "enemy: {}, distance: {}, measurement: {}".format(self.id, dist, measurement)
+                        #if selfcopy.playerId == 0:
+                            #print "enemy: {}, distance: {}, measurement: {}".format(self.id, dist, measurement)
                     #print "distance: {}".format(selfcopy.distancer.getDistance(Pos, (x,y)))
                     #print "distance: {}".format(selfcopy.distancer.getDistanceOnGrid(Pos, (x,y)))
                     #print "distance: {}".format(selfcopy.getMazeDistance(Pos, (x,y)))
@@ -93,8 +91,8 @@ class enemyAgent(object):
 
 
     def updateGridMotion(self, selfcopy, gameState):
-        print "x: {}".format(len(self.grid))
-        print "y: {}".format(len(self.grid[0]))
+        #print "x: {}".format(len(self.grid))
+        #print "y: {}".format(len(self.grid[0]))
         prevgrid = deepcopy(self.grid)
 
         dx = [1, 0, -1, 0]
@@ -123,7 +121,7 @@ class enemyAgent(object):
             for i in range(0,len(self.grid[0])):
                 if row[i] > 0 and row[i] < minimum:
                     minimum = row[i]
-        print minimum
+        #print minimum
 
         for x in range(0,len(self.grid)):
             #util.pause()
@@ -150,8 +148,8 @@ class enemyAgent(object):
         totalsum = 0
         for row in self.grid:
             totalsum += sum(row)
-        print "chugalug"
-        print totalsum
+        #print "chugalug"
+        #print totalsum
         for row in self.grid:
             if sum(row) > 0:
                 row = [float(i)/totalsum for i in row]
@@ -184,7 +182,7 @@ class SharedMemory(CaptureAgent):
         self.enemy.append(enemyAgent())
 
         #print layout.getLayout( options.layout )
-        print self.enemy
+        #print self.enemy
         #util.pause()
         
     # returns the state of each pacman
@@ -502,8 +500,8 @@ class MultiAgentSearchAgent(CaptureAgent):
         foodScore = 0
         Pos = myNewState.getPosition()
 
-
-        distanceToClosestFood = min(map(lambda x: self.getMazeDistance(Pos, x), food.asList()))
+        if food.asList():
+            distanceToClosestFood = min(map(lambda x: self.getMazeDistance(Pos, x), food.asList()))
     
         if(len(ghostPositions)>0):
             distanceToClosestGhost = min(map(lambda x: self.getMazeDistance(Pos, x), 
@@ -522,7 +520,7 @@ class MultiAgentSearchAgent(CaptureAgent):
         distanceToEnemyPacman = 999
         goTo = None
         for id in enemyPacmanPossiblePositions:
-            print id
+            #print id
             for enemyP in enemyPacmanPossiblePositions[id]:
                 if self.getMazeDistance(Pos, enemyP.getAgentPosition(id))<distanceToEnemyPacman:
                     pacmanFollowing = id
@@ -548,16 +546,17 @@ class MultiAgentSearchAgent(CaptureAgent):
         elif distanceToClosestGhost < 6:
           ghostScore = (1./distanceToClosestGhost)
         
-        if(len(food.asList())==len(oldfood.asList())-1):
-            foodScore = 2
-        elif distanceToClosestFood == 0:
-            foodScore = 0
-            ghostScore += 2
-        else:
-            foodScore = 1./distanceToClosestFood
+        if food.asList():
+            if(len(food.asList())==len(oldfood.asList())-1):
+                foodScore = 2
+            elif distanceToClosestFood == 0:
+                foodScore = 0
+                ghostScore += 2
+            else:
+                foodScore = 1./distanceToClosestFood
         if (myOldState.isPacman and myOldState.numCarrying>0):
             d = self.distanceToCamp(newGameState)
-            print(str(d))
+            #print(str(d))
             if d==0:
                 captureScore = 999
             else:
@@ -697,7 +696,6 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
                 print(attr_name, callable(attr_value))
             util.pause()
 
-
             print "ded"
             print self.evaluateState()
             for attr_name in dir(self.getPreviousObservation()):
@@ -705,36 +703,48 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
                 print(attr_name, callable(attr_value))
             util.pause()
 
+            
             print "gameState"
-            for attr_name in dir(gameState.getAgentState(emy.id)):
-                attr_value = getattr(gameState.getAgentState(emy.id), attr_name)
+            for attr_name in dir(gameState.getAgentState(self.index)):
+                attr_value = getattr(gameState.getAgentState(self.index), attr_name)
                 print(attr_name, callable(attr_value))
-            util.pause()""
+            util.pause()
+            
 
 
             if gameState.GhostRules().checkDeath(emy.id):
                 print"ded dead"
                 util.pause()"""
+
             emy.updateGridMeasurment(self, gameState, gameState.getAgentDistances()[emy.id])   #incorperates noisy sonar measurement
+            #print gameState.isScared(self.index)
+
+
+
+
             if gameState.getAgentState(emy.id).getPosition() != None:       #if we see the enemy agent, update their position
                 emy.exactPosition(gameState.getAgentState(emy.id).getPosition())
-                print "EnemyPos: {}".format(gameState.getAgentState(emy.id).getPosition())
-                print "OurPos: {}".format(gameState.getAgentState(self.index).getPosition())
 
-                for agent in self.getTeam(gameState):
-                    if self.getMazeDistance(gameState.getAgentState(emy.id).getPosition(), gameState.getAgentState(agent).getPosition()) < 2:
-                        emy.setTouchingAgent()  #first check if agent is touching
+                if self.getMazeDistance(gameState.getAgentState(emy.id).getPosition(), gameState.getAgentState(self.index).getPosition()) < 1.5:
+                    emy.setTouchingAgent(self.playerId)  #first check if agent is touching
+                    print "our agent {} is touching {}".format(self.index, emy.id)
+
             else:
-                if emy.touchingAgent:   #the agent is out of range and has thus jumped 6 sonar levels
-                    print gameState.getAgentState(emy.id).isPacman
-                    print "he deeeed"
-                    util.pause()
-                emy.notTouchingAgent()  #otherwise everything is fine, carry on.
-                        #util.pause()
-                    #if not agent == self.index:
-                    #    allyId = agent
+                #print "team: {}, agentnum: {}, index: {}".format(self.getTeam(gameState),agentNum, self.index)
+                if emy.touchingAgent[self.playerId]:   #the agent is out of range and has thus jumped 6 sonar levels
+                        sizeofmove = util.manhattanDistance(gameState.getAgentState(self.index).getPosition(), self.previousLocation)
+                        if not gameState.getAgentState(self.index).isPacman or gameState.getAgentState(emy.id).scaredTimer > 0:
+                            if not abs(sizeofmove) >1:
+                                print "GET MUNCHED"
+                                emy.setGhostStart()
+                                emy.updateGridMeasurment(self, gameState, gameState.getAgentDistances()[emy.id]) 
+                            else:
+                                print "rip"
+                                emy.notTouchingAgent(self.playerId)
+                else:
+                    emy.notTouchingAgent(self.playerId)  #otherwise everything is fine, carry on.
 
-                #for ally in allies: #gameState.getAgentState(self.getTeam(gameState)[0]):
+        self.getCapsules(gameState)
 
 
 
@@ -742,11 +752,12 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
         if self.playerId == 0:
             sharemem.enemy[0].drawGrid(self)
-            """print "entering gridmeasure"
-            print sharemem.getTreeAction(self.playerId)
-            print gameState.getAgentDistances()     #Noisy Data!!!
-            #print self.getCurrentObservation()
-            print "distancer: ".format(self.distancer.getMazeDistances())#(self.index, sharemem.enemy[0].id))"""
+            """
+            #print "entering gridmeasure"
+            #print sharemem.getTreeAction(self.playerId)
+            #print gameState.getAgentDistances()     #Noisy Data!!!
+            ##print self.getCurrentObservation()
+            #print "distancer: ".format(self.distancer.getMazeDistances())#(self.index, sharemem.enemy[0].id))"""
             
 
 
@@ -764,6 +775,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         #values = [self.minmax(gameState.generateSuccessor(self.index, a),self.index,0) for a in actions]
         
         self.updateGridMeasurment(gameState)
+        self.previousLocation = gameState.getAgentState(self.index).getPosition()
         #print(bestActions)
         
         #print "MakeObservsation1: {}".format(self.getMazeDistance(self.getPosition, enemyP.getAgentPosition(id)))
@@ -775,6 +787,6 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         #print(shareMemory.getEnemy(0).id)
                 
         #minimax(self, gameState, agentIndex, depth)
-
+        #print "waka"
 
         return random.choice(bestActions)
