@@ -158,6 +158,24 @@ class enemyAgent(object):
         self.grid = [[0 for i in range(len(self.grid[0]))] for j in range(len(self.grid))]
         self.grid[int(measurement[0])][int(measurement[1])] = 1
 
+    def notInSight(self, posi):
+        #print "Agent: {}, pos {}".format(selfcopy.index, pos)
+        pos = (posi[1],posi[0])
+        for i in range(0, SONAR_MAX):
+            for j in range(0, SONAR_MAX):
+                if i+j < SONAR_MAX:
+                    x = int(i)
+                    y = int(j)
+                    #print "Agent: {}, pos {}, i: {}, j: {}".format(selfcopy.index, pos, i ,j)
+                    if i+pos[0] < len(self.grid) and pos[1]+j < len(self.grid[0]):
+                        self.grid[int(pos[0]+i)][int(pos[1]+j)] = 0
+                    if pos[0]-i <= 0 and pos[1]+j < len(self.grid[0]):
+                        self.grid[int(pos[0]-i)][int(pos[1]+j)] = 0
+                    if pos[0]-i >= 0 and j-pos[1] >= 0:
+                        self.grid[int(pos[0]-i)][int(pos[1]-j)] = 0
+                    if pos[0]+i < len(self.grid) and j-pos[1] >= 0:                        
+                        self.grid[int(pos[0]+i)][int(pos[1]-j)] = 0
+
 
     def drawGrid(self, selfcopy):
         for x in range(0,len(self.grid)):
@@ -167,6 +185,7 @@ class enemyAgent(object):
                 #print "ghost: {}, location: [{},{}], value: {}".format(self.id, x, y, self.grid[y][x])
                 if self.grid[x][y] > 0:
                     selfcopy.debugDraw((x, y), [1,0,1],False)
+        #print self.grid
 
 
 # A shared memory class, containing a counter and a increment function. 
@@ -743,6 +762,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
                                 emy.notTouchingAgent(self.playerId)
                 else:
                     emy.notTouchingAgent(self.playerId)  #otherwise everything is fine, carry on.
+                    emy.notInSight(gameState.getAgentState(self.index).getPosition())
 
         self.getCapsules(gameState)
 
