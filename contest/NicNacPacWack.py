@@ -28,6 +28,16 @@ from capture import SONAR_NOISE_RANGE, SONAR_NOISE_VALUES, SIGHT_RANGE, COLLISIO
 # Team creation #
 #################
 
+def av(vals):
+    average = 0.0
+    n = 0.0
+    for v in vals:
+        n+=1
+        average+=v
+    average += min(vals)
+    n+=1
+    return average/n
+
 #def setGlobalVariables(agentIndex)
 #    agentValue[agentIndex] = agentIndex
 SONAR_MAX = (SONAR_NOISE_RANGE - 1)/2
@@ -352,6 +362,127 @@ class MultiAgentSearchAgent(CaptureAgent):
             ghostPositions = map(lambda g: g.getPosition(), ghostStates)
         return 0;
 
+    def getGhostScore(self, gameState):
+        
+        enemies = []
+        for agent in self.getOpponents(gameState):
+            enemies.append(gameState.getAgentState(agent))
+
+        ghostStates = []
+        for enemy in enemies:
+            if not enemy.isPacman and enemy.getPosition() != None:
+                ghostStates.append(enemy)
+
+        ghostPositions = map(lambda g: g.getPosition(), ghostStates)
+        if(len(ghostPositions)>0):
+            distanceToClosestGhost = min(map(lambda x: self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), x), 
+                                         ghostPositions))
+        else:
+            distanceToClosestGhost=100
+
+        if distanceToClosestGhost == 0:
+            ghostScore = -999
+            print "dist=0"        
+        elif distanceToClosestGhost < 6:
+            ghostScore = (1./distanceToClosestGhost)
+        else:
+            ghostScore = 0
+        return ghostScore
+
+
+    def getFoodScore(self, newGameState, oldfood):
+
+        food = self.getFood(newGameState)
+        if food.asList():
+            distanceToClosestFood = min(map(lambda x: self.getMazeDistance(newGameState.getAgentState(self.index).getPosition(), x), food.asList()))
+
+            if(len(food.asList())==len(oldfood.asList())-1):    #I don't get why we have this. Is this saying that if we've eaten food, then we have a high food score?
+                foodScore = 2                
+            elif distanceToClosestFood == 0:
+                foodScore = 0
+                ghostScore += 2 #not sure how to treat this
+            else:
+                foodScore = 1./distanceToClosestFood
+        else:
+            print "no food list"
+            foodScore = 0
+        return foodScore
+
+    def getPacmanScore(self, gameState, newGameState):
+        Pos = newGameState.getAgentState(self.index).getPosition()
+        enemyPacmanPossiblePositions = {}
+        #Find closest enemy and best position to intercept him 
+        for agent in self.getOpponents(newGameState):
+            # Add opponents to list of enemies
+            enemy = newGameState.getAgentState(agent)
+            if(enemy.isPacman and enemy.getPosition() != None):
+                enemyPacmanPossiblePositions[agent] = map(lambda a: gameState.generateSuccessor(agent, a),gameState.getLegalActions(agent))
+        PacmanFollowing = -1;
+        distanceToEnemyPacman = 999
+        goTo = None
+        for id in enemyPacmanPossiblePositions:
+            #print id
+            for enemyP in enemyPacmanPossiblePositions[id]:
+                if self.getMazeDistance(Pos, enemyP.getAgentPosition(id))<distanceToEnemyPacman:
+                    #pacmanFollowing = id
+                    distanceToEnemyPacman = self.getMazeDistance(Pos, enemyP.getAgentPosition(id))
+                    #goTo = enemyP.getAgentPosition(id)
+
+        if distanceToEnemyPacman == 0:
+            pacmanScore = 2
+            print "a"
+        elif distanceToEnemyPacman < 999:
+            pacmanScore = 1/distanceToEnemyPacman
+        else:
+            pacmanScore = 0
+        
+        return pacmanScore
+
+
+    def getCaptureScore(self, newGameState, myOldState, myNewState):
+
+        if (myOldState.isPacman and myOldState.numCarrying>0):
+            d = self.distanceToCamp(newGameState)
+            #print(str(d))
+            if d==0:
+                captureScore = 999
+            else:
+                captureScore = math.sqrt(myNewState.numCarrying) *1./self.distanceToCamp(newGameState)
+        else:
+            captureScore = 0
+        return captureScore
+
+    def getFriendScore(self, myNewState, friendState):
+        Pos = myNewState.getPosition()
+        if friendState.getPosition()!=None:
+            if self.getMazeDistance(Pos, friendState.getPosition())>0:
+                friendScore = 1/self.getMazeDistance(Pos, friendState.getPosition())
+            else:
+                friendScore = 1
+        else:
+            friendScore = 1
+        return friendScore
+    
+
+    def getPillScore(self, newGameState, oldpills):
+        Pos = newGameState.getAgentState(self.index).getPosition()
+        food = self.getFood(newGameState)
+        pills = self.getCapsules(newGameState)
+        distanceToClosestPill = min(map(lambda x: self.getMazeDistance(Pos, x), food.asList()))
+        if(len(pills)==len(oldpills)-1):
+            pillScore = 2
+        elif distanceToClosestPill == 0:
+            pillScore = 0
+        else:
+            pillScore = 1./distanceToClosestPill
+        return pillScore
+        
+    def getWallScore(self, newGameState):
+        if(newGameState.getLegalActions(self.index)<3):
+            wallScore = 1
+        else:
+            wallScore = 0
+        return wallScore
 
     # Main function
     # Used to calculate all the resulting features from an action.
@@ -367,113 +498,66 @@ class MultiAgentSearchAgent(CaptureAgent):
             newGameState = gameState.generateSuccessor(self.index, a)
         myOldState = gameState.getAgentState(self.index)
         myNewState = newGameState.getAgentState(self.index)
-        friendState = gameState.getAgentState((self.index+2)%4)
-
-        enemies = []
-        for agent in self.getOpponents(newGameState):
-            # Add opponents to list of enemies
-            enemies.append(newGameState.getAgentState(agent))
-        ghostStates = []
-        # Check enemies...
-        for enemy in enemies:
-            # If there is an enemy position that we can see...
-            if not enemy.isPacman and enemy.getPosition() != None:
-                # Add that enemy to the list of defenders
-                ghostStates.append(enemy)
-                
+        friendState = gameState.getAgentState((self.index+2)%4)      
         oldfood = self.getFood(gameState)
-        food = self.getFood(newGameState)
-        #ghostStates = self.getGhostStates(gameState) 
-        ghostPositions = map(lambda g: g.getPosition(), ghostStates)
-
-        for agent in self.getTeam(newGameState):
-            # Add opponents to list of enemies
-            if not agent == self.index:
-                ally = newGameState.getAgentState(agent)
-                agentId = agent
-
-
-        sharemem.setTreeAction(self.playerId, self.index)
-        #print("Agent = {} treeAction = {}".format(self.index, sharemem.treeAction[self.playerId]))
-
-
-
-        foodScore = 0
-        Pos = myNewState.getPosition()
-
-        if food.asList():
-            distanceToClosestFood = min(map(lambda x: self.getMazeDistance(Pos, x), food.asList()))
-    
-        if(len(ghostPositions)>0):
-            distanceToClosestGhost = min(map(lambda x: self.getMazeDistance(Pos, x), 
-                                         ghostPositions))
-        else:
-            distanceToClosestGhost=100
         
-        enemyPacmanPossiblePositions = {}
-        #Find closest enemy and best position to intercept him 
-        for agent in self.getOpponents(newGameState):
-            # Add opponents to list of enemies
-            enemy = newGameState.getAgentState(agent)
-            if(enemy.isPacman and enemy.getPosition() != None):
-                enemyPacmanPossiblePositions[agent] = map(lambda a: gameState.generateSuccessor(agent, a),gameState.getLegalActions(agent))
-        PacmanFollowing = -1;
-        distanceToEnemyPacman = 999
-        goTo = None
-        for id in enemyPacmanPossiblePositions:
-            #print id
-            for enemyP in enemyPacmanPossiblePositions[id]:
-                if self.getMazeDistance(Pos, enemyP.getAgentPosition(id))<distanceToEnemyPacman:
-                    pacmanFollowing = id
-                    distanceToEnemyPacman = self.getMazeDistance(Pos, enemyP.getAgentPosition(id))
-                    goTo = enemyP.getAgentPosition(id)
-        #if(goTo!=None):
-        #    self.debugDraw([goTo], [1,0,0],True)
-            
-        pacmanScore = 0
-        ghostScore = 0
-        foodScore = 0
-        captureScore = 0
-        friendScore = 0       
+
+        ghostScore = self.getGhostScore(newGameState)
+        foodScore = self.getFoodScore(newGameState, oldfood)
+        pacmanScore = self.getPacmanScore(gameState, newGameState)
+        captureScore = self.getCaptureScore(newGameState, myOldState, myNewState)
+        friendScore = self.getFriendScore(myNewState, friendState)
         
-        if distanceToEnemyPacman == 0:
-            pacmanScore = 2
-        elif distanceToEnemyPacman < 999:
-            pacmanScore = 1/distanceToEnemyPacman
-                
-            
-        if distanceToClosestGhost == 0:
-           ghostScore = -999
-        elif distanceToClosestGhost < 6:
-          ghostScore = (1./distanceToClosestGhost)
-        
-        if food.asList():
-            if(len(food.asList())==len(oldfood.asList())-1):
-                foodScore = 2
-            elif distanceToClosestFood == 0:
-                foodScore = 0
-                ghostScore += 2
-            else:
-                foodScore = 1./distanceToClosestFood
-        if (myOldState.isPacman and myOldState.numCarrying>0):
-            d = self.distanceToCamp(newGameState)
-            #print(str(d))
-            if d==0:
-                captureScore = 999
-            else:
-                captureScore = math.sqrt(myNewState.numCarrying) *1./self.distanceToCamp(newGameState)
-                
-        if friendState.getPosition()!=None:
-            if self.getMazeDistance(Pos, friendState.getPosition())>0:
-                friendScore = 1/self.getMazeDistance(Pos, friendState.getPosition())
-            else:
-                friendScore = 1
+
         #print(str(a)+":"+str(foodScore)+","+str(ghostScore)+","+str(captureScore)+","+str(myNewState))
+
+        pillScore = 0
+        wallScore = 0
         features['foodScore'] = foodScore
+        features['pileScore'] = pillScore
         features['ghostScore'] = ghostScore
         features['captureScore'] = captureScore
         features['pacmanScore'] = pacmanScore
         features['friendScore'] = friendScore
+        features['wallScore'] = wallScore
+
+        return features
+
+    def getFeaturesMinMax(self, gameState, a, oldGameState):
+        """
+        Returns a counter of features for the state
+        """
+        features = util.Counter()
+        if(a==None):
+            newGameState = gameState
+        else:
+            newGameState = gameState.generateSuccessor(self.index, a)
+        myOldState = oldGameState.getAgentState(self.index)
+        myNewState = newGameState.getAgentState(self.index)
+        friendState = gameState.getAgentState((self.index+2)%4)      
+        
+        oldfood = self.getFood(gameState)
+        oldpills = self.getCapsules(oldGameState)
+        pills = self.getCapsules(newGameState)
+        
+        
+
+        ghostScore = self.getGhostScore(newGameState)
+        foodScore = self.getFoodScore(newGameState, oldfood)
+        pacmanScore = self.getPacmanScore(gameState, newGameState)
+        captureScore = self.getCaptureScore(newGameState, myOldState, myNewState)
+        friendScore = self.getFriendScore(myNewState, friendState)
+        pillScore = self.getPillScore(newGameState, oldpills)
+        wallScore = self.getWallScore(newGameState)
+
+        #print(str(a)+":"+str(foodScore)+","+str(ghostScore)+","+str(captureScore)+","+str(myNewState))
+        features['foodScore'] = foodScore
+        features['pileScore'] = pillScore
+        features['ghostScore'] = ghostScore
+        features['captureScore'] = captureScore
+        features['pacmanScore'] = pacmanScore
+        features['friendScore'] = friendScore
+        features['wallScore'] = wallScore
 
 
         return features
@@ -482,7 +566,14 @@ class MultiAgentSearchAgent(CaptureAgent):
 
 
     def getWeights(self, gameState):
-        return {'foodScore': self.foodScore,'ghostScore': self.ghostScore,'captureScore': self.captureScore,'pacmanScore':self.pacmanScore,'friendScore':self.friendScore}
+        return ({'foodScore': self.foodScore, 
+                 'pillScore': self.pillScore,
+                 'ghostScore': self.ghostScore,
+                 'captureScore': self.captureScore,
+                 'pacmanScore':self.pacmanScore,
+                 'friendScore':self.friendScore, 
+                 'wallScore':self.wallScore})
+
     
     def evaluateState(self,gameState,a):
         features = self.getFeatures(gameState, a)
@@ -512,6 +603,7 @@ class MultiAgentSearchAgent(CaptureAgent):
             return (self.getFoodYouAreDefending(gameState)<=2 or min(distances_to_defenders)<1)
         else:
             return (self.getFoodYouAreDefending(gameState)<=2)
+
 
     def updateGridMeasurment(self, gameState):
         #print "self: {}, self+1%4: {}".format(self.index,(self.index+1)%4)
@@ -606,34 +698,98 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         return self.isLost(gameState,enemies) or self.isWon(gameState) or d == 0
     
     
-    def minmax(self, gameState, agentIndex, depth):
+    def minmax(self, gameState, agentIndex, depth,isRed,initialGameState):
         "produces the min or max value for some game state and depth; depends on what agent."
+        #print("Depth:"+str(depth)+",agent "+str(agentIndex))
         successorStates = map(lambda a: gameState.generateSuccessor(agentIndex, a),gameState.getLegalActions(agentIndex))
         if self.gameOver(gameState, depth): # at an end
-            return self.evaluateState(gameState,None)
+            return self.evaluateStateMinMax(gameState,None,initialGameState)
         else:
-            # use modulo so we can wrap around, get vals of leaves
+            # use modulo so we can wrap around, have to skip agents we can't see
             nextAgent = (agentIndex + 1) % gameState.getNumAgents()
-            vals = map(lambda s: self.minmax(s, nextAgent, depth - 1),successorStates)      
-            if nextAgent == 0: # pacman
-                return max(vals)
-            else:
-                return min(vals)
-    
+            while gameState.getAgentState(nextAgent).getPosition()==None:
+                nextAgent = (nextAgent + 1) % gameState.getNumAgents()
+            #print("Next Agent: "+str(nextAgent))
+            vals = map(lambda s: self.minmax(s, nextAgent, depth - 1,isRed,initialGameState),successorStates)
+            if isRed:
+                if nextAgent%2 == 0: # team member
+                    return max(vals)
+                else:
+                    return min(vals)
+            else:   
+                if nextAgent%2 == 1: # team member
+                    return max(vals)
+                else:
+                    return min(vals)
+
+
+    def expectimax(self, gameState, agentIndex, depth,isRed,initialGameState):
+        "produces the average or max value for some game state and depth; depends on what agent."
+        #print("Depth:"+str(depth)+",agent "+str(agentIndex))
+        successorStates = map(lambda a: gameState.generateSuccessor(agentIndex, a),gameState.getLegalActions(agentIndex))
+        if self.gameOver(gameState, depth): # at an end
+            return self.evaluateStateMinMax(gameState,None,initialGameState)
+        else:
+            # use modulo so we can wrap around, have to skip agents we can't see
+            nextAgent = (agentIndex + 1) % gameState.getNumAgents()
+            while gameState.getAgentState(nextAgent).getPosition()==None:
+                nextAgent = (nextAgent + 1) % gameState.getNumAgents()
+            #print("Next Agent: "+str(nextAgent))
+            vals = map(lambda s: self.minmax(s, nextAgent, depth - 1,isRed,initialGameState),successorStates)
+            if isRed:
+                if nextAgent%2 == 0: # team member
+                    return max(vals)
+                else:
+                    return av(vals)
+            else:   
+                if nextAgent%2 == 1: # team member
+                    return max(vals)
+                else:
+                    return av(vals)
+
+    def evaluateStateMinMax(self,gameState,a,firstGameState):
+        features = self.getFeaturesMinMax(gameState, a,firstGameState)
+        weights = self.getWeights(gameState)
+        #print(features)
+        return features * weights
+
 
     def setDefaultWeights(self):
-        self.foodScore = 1.0
-        self.ghostScore = -2.0
-        self.captureScore = 1.0
-        self.pacmanScore = 0.0
-        self.friendScore = -0.0
+        old = False
+        new = False
+        if old:
+            self.foodScore = 1.0
+            self.pillScore = 1.0
+            self.ghostScore = -2.0
+            self.captureScore = 1.0
+            self.pacmanScore = 0.0
+            self.friendScore = -0.75
+            self.wallScore = -2.0
+        elif new:
+            self.foodScore = 2.0
+            self.pillScore = 1.0
+            self.ghostScore = -1.0
+            self.captureScore = 1.5
+            self.pacmanScore = 0.5
+            self.friendScore = -2.0
+            self.wallScore = -1.0
+        else:
+            self.foodScore = 1.0
+            self.pillScore = 1.0
+            self.ghostScore = -2.0
+            self.captureScore = 1.0
+            self.pacmanScore = 0.0
+            self.friendScore = -0.0
+            self.wallScore = -0.0
 
     def setWeights(self, weight):
         self.foodScore = weight[0]
-        self.ghostScore = weight[1]
-        self.captureScore = weight[2]
-        self.pacmanScore = weight[3]
-        self.friendScore = weight[4]
+        self.pillScore = weight[1]
+        self.ghostScore = weight[2]
+        self.captureScore = weight[3]
+        self.pacmanScore = weight[4]
+        self.friendScore = weight[5]
+        self.wallScore = weight[5]
 
 
     def evalRunningOutOfTime(self, gameState):
@@ -652,22 +808,42 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
 
     def returnToBase(self):
-        self.setWeights([0, 1, 1, 0, 0]) #food, ghost, capture, pacman, friend
+        self.setWeights([0, 0.4, 1, 1, 0, -2]) #food, pill, ghost, capture, pacman, friend, wall
 
 
     def behaviorTree(self, gameState):
-        actions = gameState.getLegalActions(self.index)
+        
 
         if self.evalRunningOutOfTime(gameState):
+            action = 1            
             self.returnToBase()
         elif self.noFoodLeft(gameState):
+            action = 2
             self.returnToBase()
             print "out of food"
         else:
+            action = 0
             self.setDefaultWeights()
             #print "weights: {}".format(self.getWeights(gameState))
 
+
+        sharemem.setTreeAction(self.playerId, action)
+
+        actions = gameState.getLegalActions(self.index)
+        """
+        t1 = time.clock()
+        values = [self.evaluateState(gameState,a) for a in actions]
+        #valuesMinMax = [self.minmax(gameState.generateSuccessor(self.index, a),self.index,0,gameState.isOnRedTeam(self.index),gameState) for a in actions]
+        valuesExpectiMax = [self.expectimax(gameState.generateSuccessor(self.index, a),self.index,2,gameState.isOnRedTeam(self.index),gameState) for a in actions]
+        finalValues = valuesExpectiMax #Choose which values to use for choosing optimal action
+
+        #util.pause()
+        maxValue = max(finalValues)
+        bestActions = [a for a, v in zip(actions, finalValues) if v == maxValue]
+        print(time.clock()-t1)
+        """
         #Calls MinMax
+        #values = [self.minmax(gameState.generateSuccessor(self.index, a),self.index,1) for a in actions]
         values = [self.evaluateState(gameState,a) for a in actions]
         maxValue = max(values)
         
@@ -680,7 +856,6 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
     def chooseAction(self, gameState):
 
         movement = self.behaviorTree(gameState)
-        #values = [self.minmax(gameState.generateSuccessor(self.index, a),self.index,0) for a in actions]
         
         self.updateGridMeasurment(gameState)
         self.previousLocation = gameState.getAgentState(self.index).getPosition()
