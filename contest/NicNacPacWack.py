@@ -390,9 +390,12 @@ class MultiAgentSearchAgent(CaptureAgent):
         return ghostScore
 
     def getGhostScore(self, gameState, newGameState, a):
-        Pos = newGameState.getAgentState(self.index).getPosition()
-        oldPos = gameState.getAgentState(self.index).getPosition()
+        pacself = newGameState.getAgentState(self.index)
+        if not pacself.isPacman and not pacself.scaredTimer > 0:
+            return 0
 
+        Pos = pacself.getPosition()
+        oldPos = gameState.getAgentState(self.index).getPosition()
 
         enemyPacmanPossiblePositions = {}
         #Find closest enemy and best position to intercept him 
@@ -425,6 +428,7 @@ class MultiAgentSearchAgent(CaptureAgent):
         else:
             pacmanScore = 0
         return pacmanScore
+
 
     def getFoodScore(self, newGameState, oldfood):
 
@@ -460,7 +464,6 @@ class MultiAgentSearchAgent(CaptureAgent):
                 if not futuredist == currentdist:
                     print "PREPARE FOR MUNCHING!"
                     return 10
-
 
             if(enemy.isPacman and enemy.getPosition() != None):
                 enemyPacmanPossiblePositions[agent] = map(lambda a: gameState.generateSuccessor(agent, a),gameState.getLegalActions(agent))
@@ -498,13 +501,16 @@ class MultiAgentSearchAgent(CaptureAgent):
             captureScore = 0
         return captureScore
 
-    def getFriendScore(self, myNewState, friendState):
+    def getFriendScore(self, myNewState, friendState, a):
         Pos = myNewState.getPosition()
         if friendState.getPosition()!=None:
             if self.getMazeDistance(Pos, friendState.getPosition())>0:
                 friendScore = 1/self.getMazeDistance(Pos, friendState.getPosition())
             else:
                 friendScore = 1
+                if a == 'Stop':
+                    print "Back to Work!"
+                    #return 0
         else:
             friendScore = 1
         return friendScore
@@ -560,12 +566,13 @@ class MultiAgentSearchAgent(CaptureAgent):
         foodScore = self.getFoodScore(newGameState, oldfood)
         pacmanScore = self.getPacmanScore(gameState, newGameState, a)
         captureScore = self.getCaptureScore(newGameState, myOldState, myNewState)
-        friendScore = self.getFriendScore(myNewState, friendState)
+        friendScore = self.getFriendScore(myNewState, friendState, a)
         pillScore = self.getPillScore(newGameState, oldpills)
         wallScore = self.getWallScore(newGameState)
         
 
-        #print(str(a)+":"+str(foodScore)+","+str(ghostScore)+","+str(captureScore)+","+str(myNewState))
+        #if self.index ==2:
+        #    print "{}: [{}, {}, {}, {}, {} , {}, {}]".format(a, foodScore, pillScore, ghostScore, captureScore, pacmanScore, friendScore, wallScore)
         features['foodScore'] = foodScore
         features['pileScore'] = pillScore
         features['ghostScore'] = ghostScore
@@ -599,7 +606,7 @@ class MultiAgentSearchAgent(CaptureAgent):
         foodScore = self.getFoodScore(newGameState, oldfood)
         pacmanScore = self.getPacmanScore(gameState, newGameState, a)
         captureScore = self.getCaptureScore(newGameState, myOldState, myNewState)
-        friendScore = self.getFriendScore(myNewState, friendState)
+        friendScore = self.getFriendScore(myNewState, friendState, a)
         pillScore = self.getPillScore(newGameState, oldpills)
         wallScore = self.getWallScore(newGameState)
 
@@ -737,6 +744,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         MultiAgentSearchAgent.registerInitialState(self, gameState)
 
         self.setDefaultWeights()
+        self.historicalActions = ['Go']
         
         '''
         Your initialization code goes here, if you need any.
@@ -820,12 +828,12 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
             self.wallScore = -2.0
         elif new:
             self.foodScore = 2.0
-            self.pillScore = 1.0
+            self.pillScore = 1.5
             self.ghostScore = -1.0
             self.captureScore = 1.5
             self.pacmanScore = 1.5  #changed from 0.5
-            self.friendScore = -2.0
-            self.wallScore = -0.5   #changed from -1.0
+            self.friendScore = -2.0 #changed from -2.0
+            self.wallScore = -1.0   #changed from -1.0
         else:
             self.foodScore = 1.0
             self.pillScore = 1.0
@@ -855,7 +863,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
 
     def noFoodLeft(self, gameState):
-        if len(self.getFood(gameState).asList()) < MIN_FOOD:
+        if len(self.getFood(gameState).asList()) <= MIN_FOOD:
             return True
         return False
 
@@ -928,9 +936,16 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
             return True
         return False
 
+    def isTrapped(self, gameState):
+        if(len(gameState.getLegalActions(self.index))<3):
+            return True
+        return False
+
     def eatPacman(self):
         self.setWeights([0, 0, 0, 1, 0, 0, 0]) #food, pill, ghost, capture, pacman, friend, wall
 
+    def leaveWalls(self):
+        self.setWeights([0, 0, 1, 0, 0, 0, -1]) #food, pill, ghost, capture, pacman, friend, wall
 
     def tooSpooked(self, gameState):
         self.pacmanScore = -abs(self.pacmanScore)
@@ -944,12 +959,14 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
     def behaviorTree(self, gameState):
         
-
-        if self.evalRunningOutOfTime(gameState):
-            action = 1            
+        if self.isTrapped(gameState):
+            action = 1
+            self.leaveWalls()
+        elif self.evalRunningOutOfTime(gameState):
+            action = 2            
             self.returnToBase()
         elif self.noFoodLeft(gameState):
-            action = 2
+            action = 3
             self.returnToBase()
             print "out of food"
         else:
@@ -959,18 +976,21 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
         #Modifiers/Interrupts
         if self.isScared(gameState):
-            action = 3
+            mod = 0
             self.tooSpooked(gameState)
-            print "thanks mr skeletal"
+            #print "thanks mr skeletal"
         if self.isLuigi(gameState):
-            action = 4
+            mod = 1
             self.vacuumGhosts(gameState)
-            print "Luigi Time"
+            #print "Luigi Time"
 
         sharemem.setTreeAction(self.playerId, action)
 
         actions = gameState.getLegalActions(self.index)
-        #actions.remove('Stop');
+        
+        if self.historicalActions[0] == 'Stop' and len(set(self.historicalActions)) <= 1: #if contain the same value
+            actions.remove('Stop')
+            #print "NO BREAKS"
         
         mmax = False
         emax = False
@@ -993,9 +1013,11 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
             print(time.clock()-t1)
         else:
             values = [self.evaluateState(gameState,a) for a in actions]
-            #print "agent: {}".format(self.index)
-            #print actions
-            #print values
+            """
+            if self.index ==2:
+                print "agent: {}".format(self.index)
+                print actions
+                print values"""
             maxValue = max(values)
             bestActions = [a for a, v in zip(actions, values) if v == maxValue]
         #Calls MinMax
@@ -1005,14 +1027,18 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
 
         return move
 
-
     def chooseAction(self, gameState):
 
         movement = self.behaviorTree(gameState)
         
         self.updateGridMeasurment(gameState)
         self.previousLocation = gameState.getAgentState(self.index).getPosition()
+
+        self.historicalActions.append(movement)
+        if len(self.historicalActions) > 3:
+            self.historicalActions.pop(0)
                 
+        print self.historicalActions
         #minimax(self, gameState, agentIndex, depth)
         print "waka"
 
