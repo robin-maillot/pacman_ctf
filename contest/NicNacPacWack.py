@@ -88,7 +88,7 @@ class enemyAgent(object):
                     #selfcopy.debugDraw((x, y), [self.grid[x][y],0,self.grid[x][y]],False)
                     #print "distance: {}".format(util.manhattanDistance(Pos, (x,y)))
                     dist = util.manhattanDistance(Pos, (x,y))
-                    if abs(dist - measurement) >= SONAR_MAX+1: #+1 is magic
+                    if abs(dist - measurement) >= SONAR_MAX+2: #+2 is magic
                         self.grid[x][y] = 0
                         selfcopy.debugDraw((x, y), [0,0,0],False)
                         #if selfcopy.playerId == 0:
@@ -112,20 +112,6 @@ class enemyAgent(object):
         #print walls
         #print "type: {}".format(getattr(walls))
         
-        """for attr_name in dir(walls):
-            attr_value = getattr(walls, attr_name)
-            print(attr_name, attr_value, callable(attr_value))"""
-
-
-        """print "wallx : {}".format(len(walls.data))
-        print "wally : {}".format(len(walls.data[0]))
-
-        print "akkkkkkk"
-        for z in range(0,len(self.grid)):
-            print self.grid[z]
-        #util.pause()
-
-        print "ahhhhhh" """
         minimum = 9001
         for row in self.grid:
             for i in range(0,len(self.grid[0])):
@@ -422,12 +408,33 @@ class MultiAgentSearchAgent(CaptureAgent):
 
         if distanceToEnemyPacman < 2:
             pacmanScore = 10
-            print "RUN AWAY"
+            #print "RUN AWAY"
         elif distanceToEnemyPacman < 999:
             pacmanScore = 1/distanceToEnemyPacman
         else:
-            pacmanScore = 0
+            pacmanScore = self.getPotentialGhosts(newGameState)
         return pacmanScore
+
+    def getPotentialGhosts(self, newGameState):
+        Pos = newGameState.getAgentState(self.index).getPosition()
+        total = 0.0
+        score = 0.0
+        if not newGameState.isOnRedTeam(self.index):
+            #they are pacman on the left side of the screen
+            xSize = range(0,len(sharemem.enemy[0].grid)/-1)
+        else:
+            xSize = range(len(sharemem.enemy[0].grid)/2,len(sharemem.enemy[0].grid))
+        for i in range(0,2):
+            emy = sharemem.enemy[i]
+            for x in xSize:
+                for y in range(0,len(emy.grid[0])):
+                    if emy.grid[x][y] > 0:
+                        total += 1
+                        if not self.getMazeDistance(Pos, (x,y)) == 0:
+                            score += 1.0/self.getMazeDistance(Pos, (x,y))
+        if not total == 0:
+            return (score / total)
+        return 0        
 
 
     def getFoodScore(self, newGameState, oldfood):
@@ -444,7 +451,7 @@ class MultiAgentSearchAgent(CaptureAgent):
             else:
                 foodScore = 1./distanceToClosestFood
         else:
-            print "no food list"
+            #print "no food list"
             foodScore = 0
         return foodScore
 
@@ -452,7 +459,7 @@ class MultiAgentSearchAgent(CaptureAgent):
         Pos = newGameState.getAgentState(self.index).getPosition()
         enemyPacmanPossiblePositions = {}
         #Find closest enemy and best position to intercept him 
-        ReadyToMunch = False
+
         for agent in self.getOpponents(newGameState):
             # Add opponents to list of enemies
             enemy = newGameState.getAgentState(agent)
@@ -484,8 +491,30 @@ class MultiAgentSearchAgent(CaptureAgent):
         elif distanceToEnemyPacman < 999:
             pacmanScore = 1/distanceToEnemyPacman
         else:
-            pacmanScore = 0
+            pacmanScore = self.getPotentialPacman(newGameState) #(newgamestate, isPacState)
         return pacmanScore
+
+
+    def getPotentialPacman(self, newGameState):
+        Pos = newGameState.getAgentState(self.index).getPosition()
+        total = 0.0
+        score = 0.0
+        if newGameState.isOnRedTeam(self.index):
+            #they are pacman on the left side of the screen
+            xSize = range(0,len(sharemem.enemy[0].grid)/-1)
+        else:
+            xSize = range(len(sharemem.enemy[0].grid)/2,len(sharemem.enemy[0].grid))
+        for i in range(0,2):
+            emy = sharemem.enemy[i]
+            for x in xSize:
+                for y in range(0,len(emy.grid[0])):
+                    if emy.grid[x][y] > 0:
+                        total += 1
+                        if not self.getMazeDistance(Pos, (x,y)) == 0:
+                            score += 1.0/self.getMazeDistance(Pos, (x,y))
+        if not total == 0:
+            return (score / total)
+        return 0
 
 
     def getCaptureScore(self, newGameState, myOldState, myNewState):
@@ -700,7 +729,7 @@ class MultiAgentSearchAgent(CaptureAgent):
                             if not abs(sizeofmove) >1:
                                 print "GET MUNCHED"
                                 emy.setGhostStart()
-                                emy.updateGridMeasurment(self, gameState, gameState.getAgentDistances()[emy.id]) 
+                                emy.updateGridMotion(self, gameState) 
                             else:
                                 print "rip"
                                 emy.notTouchingAgent(self.playerId)
@@ -968,7 +997,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         elif self.noFoodLeft(gameState):
             action = 3
             self.returnToBase()
-            print "out of food"
+            #print "out of food"
         else:
             action = 0
             self.setDefaultWeights()
@@ -1038,7 +1067,7 @@ class FrenchCanadianAgent(MultiAgentSearchAgent):
         if len(self.historicalActions) > 3:
             self.historicalActions.pop(0)
                 
-        print self.historicalActions
+        #print self.historicalActions
         #minimax(self, gameState, agentIndex, depth)
         print "waka"
 
