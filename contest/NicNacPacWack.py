@@ -90,7 +90,7 @@ class enemyAgent(object):
                     dist = util.manhattanDistance(Pos, (x,y))
                     if abs(dist - measurement) >= SONAR_MAX+2: #+2 is magic
                         self.grid[x][y] = 0
-                        selfcopy.debugDraw((x, y), [0,0,0],False)
+                        #selfcopy.debugDraw((x, y), [0,0,0],False)
                         #if selfcopy.playerId == 0:
                             #print "enemy: {}, distance: {}, measurement: {}".format(self.id, dist, measurement)
                     #print "distance: {}".format(selfcopy.distancer.getDistance(Pos, (x,y)))
@@ -302,7 +302,7 @@ class MultiAgentSearchAgent(CaptureAgent):
             #emory.startPos = gameState.getAgentState(emory.id).getPosition()
             emory.startPos = gameState.getInitialAgentPosition(emory.id)
             #print "startpos for agent {} = {}" .format(emory.id,emory.startPos)
-            self.debugDraw([emory.startPos], [0,1,0],False)
+            #self.debugDraw([emory.startPos], [0,1,0],False)
         
         #finds the Size of the group, depending if we're red or not (probably a terrible method, but it works)
         gridSize = []
@@ -329,7 +329,7 @@ class MultiAgentSearchAgent(CaptureAgent):
         for y in range(1,ymax-1):
             if(not gameState.hasWall(x,y)):
                 safetyCoordinates.append((x,y))
-                self.debugDraw([[x,y]], [0,0,1])
+                #self.debugDraw([[x,y]], [0,0,1])
         return safetyCoordinates
             
     def distanceToCamp(self,gameState):
@@ -340,7 +340,7 @@ class MultiAgentSearchAgent(CaptureAgent):
             if(self.getMazeDistance(Pos, x)<dmin):
                 dmin=self.getMazeDistance(Pos, x)
                 goto=x
-        self.debugDraw([goto], [0,1,0],True)
+        #self.debugDraw([goto], [0,1,0],True)
         return dmin
     
     def appxEnemyPos(self, gameState, a):
@@ -740,8 +740,8 @@ class MultiAgentSearchAgent(CaptureAgent):
         self.getCapsules(gameState)
 
 
-        if self.playerId == 0:
-            sharemem.enemy[0].drawGrid(self)   
+        #if self.playerId == 0:
+        #    sharemem.enemy[0].drawGrid(self)   
 
 
 class FrenchCanadianAgent(MultiAgentSearchAgent):
